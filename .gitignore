@@ -38,4 +38,4 @@ rsconnect/
 
 # jld specific stuff
 .DS_Store
-inputs/*
+data/*

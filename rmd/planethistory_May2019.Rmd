@@ -716,8 +716,7 @@ baseplot <- ggplot(frankenplanets)
 pp1 <- baseplot + stat_ecdf(aes(pl_disc),geom = "area", pad = FALSE)
 print(pp1)
 
-pp1 <- baseplot + stat_ecdf(aes(pl_disc,fill=mymethod),geom="area")
-print(pp1)
+
 ```
 
 Not quite what I wanted.  Let's try this...

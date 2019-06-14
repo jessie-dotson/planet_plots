@@ -1,0 +1,385 @@
+---
+title: "planet history"
+author: "J. Dotson"
+date: "12/3/2017"
+output: html_document
+---
+
+Updated May 2019.  No longer need to manually add in Kepler-90 and Kepler-80 discoveries.  Purpose here is to put together end of emission plots.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(ggplot2)
+require(dplyr)
+require(tidyverse)
+require(readr)
+require(RColorBrewer)
+require(ggforce)
+require(ggthemes)
+require(gridExtra)
+myecho=FALSE
+knitr::opts_knit$set(root.dir = '../.')
+
+```
+
+```{r, echo=myecho}
+source("Rscripts/mythemes.R")
+```
+
+
+
+## K2 Exoplanet stats
+
+the point of this document is to set up a script I can use over (and over) to generate some K2 stats and make some plots.
+
+
+Start by downloading the confirmed planet table from NExScI.
+
+```{r download, echo=myecho}
+baseurl<-"https://exoplanetarchive.ipac.caltech.edu/cgi-bin/nstedAPI/nph-nstedAPI?table=exoplanets"
+params<-"pl_hostname,pl_letter,pl_discmethod,pl_pnum,pl_orbper,pl_orbsmax,pl_orbsmaxerr1,pl_orbsmaxerr2,pl_orbeccen,pl_kepflag,pl_k2flag,ra_str,dec_str,ra,dec,st_dist,st_optmag,st_optband,gaia_gmag,st_teff,st_tefferr1,st_tefferr2,st_mass,st_masserr1,st_masserr2,st_rad,st_raderr1,st_raderr2,pl_cbflag,pl_eqt,pl_insol,pl_bmasse,pl_bmasseerr1,pl_bmasseerr2,pl_msinie,pl_rade,pl_radeerr1,pl_radeerr2,pl_trandep,pl_trandur,pl_imppar,pl_disc,pl_status,gaia_dist,st_spstr,st_logg,st_metfe,st_age,pl_locale,pl_facility,pl_telescope,pl_instrument,rowupdate"
+
+
+address<-paste(baseurl,"&select=",params,sep="")
+
+download.file(address, "data/confirmedplanets.csv")
+
+print(paste("Confirmed planets table downloaded on ",date()))
+```
+
+
+```{r inputs, echo=myecho}
+# when there's new data, need to update filename and date
+confirmedplanets <- read_csv("data/confirmedplanets.csv", comment = "#")
+
+confirmedplanets$pl_masse <- confirmedplanets$pl_bmasse  #check that this is ok!
+
+
+# make a planet name column
+confirmedplanets$name <- paste(confirmedplanets$pl_hostname, confirmedplanets$pl_letter)
+
+```
+
+
+
+```{r ,echo=myecho}
+mytheme<-theme_bw()
+#mytheme2 <- theme_hc(bgcolor="darkunica")
+#mytheme3 <- theme_solarized(light=FALSE)
+
+plothist<- ggplot(confirmedplanets) + geom_bar(aes(pl_disc)) 
+#print(plothist + mytheme)
+#print(plothist + mytheme2)
+#print(plothist + mytheme3)
+print(plothist + theme_kepler())
+#print(plothist + theme_ack())
+ggsave("plots/test.eps")
+
+```
+
+## Need to estimate radii for RV planets
+
+Estimate radii based on Chen & Kipling's forecaster.  (2017, doi = 10.3847/1538-4357/834/1/17)
+
+1) pull a random inclination between 75 and 90 to get the true Mass.  (why this range?)
+
+2) choose which power law to use from chen & kipping
+ < 2.0 Me --> Terran
+ > Terran & < 0.41 Mj --> Neptunian
+ > Neptunian & < 0.08 Msol --> Jovian
+
+3) calculate radius from appropriate power law
+  Terran:  R = 1.008 * M^0.28
+  Neptunian: R = ?? * M^0.59
+  Jovian:  R = ?? * M^-0.04
+  
+4) add the appropriate fractional noise.  Namely, rechoose a radius from a distribution centered at the radius calculated above and a sigma given by:
+  Terran: sigma = 0.04 * R
+  Neptunian:  sigma = 0.146 * R
+  Jovian: sigma = 0.0737 * R
+ 
+
+```{r, echo=myecho}
+#can test on a synthetic population...
+plotfakeplanets <- FALSE
+
+solarsystem<-read_csv("inputs/solarsystem.csv", comment = "#")
+Mass_earth <- 5.97e24 #kg
+Rad_earth <- 12756/2 #km
+Mfake<-seq(0.5, 500, by=0.5)
+
+Ct <- 1.008
+St <- 0.28
+sigmaT <- 0.04
+Mmax_t <- 2.0
+Sn <- 0.59
+Cn <- Ct * Mmax_t^St / Mmax_t^Sn  #lines have to meet
+sigmaN <- 0.146
+Mmax_n <- 0.41 * 317.83 
+Sj <- -0.04
+Cj <- Cn * Mmax_n^Sn / Mmax_n^Sj
+sigmaJ <- 0.0737
+sigmaJ <- 2*sigmaJ  # making it bigger, because...
+
+Terran_radii <- Ct * Mfake^St
+
+if (plotfakeplanets == TRUE){
+  fakeplanets<-data.frame(mass=Mfake,terran=Terran_radii)
+  
+  fakeplanets$neptunian <- Cn * Mfake^Sn
+  fakeplanets$jovian <- Cj * Mfake^Sj
+  
+  p1<-ggplot(fakeplanets) + geom_point(aes(x=mass,y=terran),col="blue") + scale_x_log10() + scale_y_log10()
+  p1 <- p1 + geom_point(aes(x=mass,y=neptunian),col="green")
+  p1 <- p1 + geom_point(aes(x=mass,y=jovian),col="red")
+  print(p1)
+}
+
+```
+
+```{r, echo=myecho}
+
+#Now forecast radii for rv planets that have a mass
+rvpl<-filter(confirmedplanets,pl_discmethod == "Radial Velocity")
+my_is <- 0
+for (i in 1: nrow(rvpl)){
+  if(is.na(rvpl$pl_masse[i])){
+    this_i <- runif(1,min=15,max=90)
+    my_is <- c(my_is,this_i)
+    rvpl$pl_masse[i] <- rvpl$pl_msinie[i] / sin(this_i/360 * 2* 3.14159)
+  }
+}
+
+my_is <- my_is[-1]
+#hist(my_is)
+
+rvpl <- filter(rvpl, !is.na(pl_masse))
+
+rvpl$pl_Rforecast <- rep(0,nrow(rvpl)) #Chen and Kipping forecaster like value
+rvpl$pl_Rforecast2 <- rep(0,nrow(rvpl)) #includes noise based on uncertainty of chen and kipping's parameters
+
+for (i in 1:nrow(rvpl)){
+  if(rvpl$pl_masse[i] <= Mmax_t) {
+    rvpl$pl_Rforecast[i] <- Ct * rvpl$pl_masse[i]^St
+    thissig <- sigmaT * rvpl$pl_Rforecast[i]
+    rvpl$pl_Rforecast2[i] <- rnorm(1,mean=rvpl$pl_Rforecast[i],sd=thissig)
+  } else if (rvpl$pl_masse[i] <= Mmax_n){
+    rvpl$pl_Rforecast[i] <- Cn * rvpl$pl_masse[i]^Sn
+    thissig <- sigmaN * rvpl$pl_Rforecast[i]
+    rvpl$pl_Rforecast2[i] <- rnorm(1,mean=rvpl$pl_Rforecast[i],sd=thissig)    
+  } else {
+    rvpl$pl_Rforecast[i] <- Cj * rvpl$pl_masse[i]^Sj
+    thissig <- sigmaJ * rvpl$pl_Rforecast[i]
+    rvpl$pl_Rforecast2[i] <- rnorm(1,mean=rvpl$pl_Rforecast[i],sd=thissig)
+  }
+}
+
+
+```
+
+```{r, echo=myecho}
+
+# plot the forecasted radii
+
+p2 <- ggplot(rvpl) + geom_point(aes(x=pl_masse,y=pl_Rforecast)) + 
+  geom_point(aes(x=pl_masse,y=pl_Rforecast2),col="cadetblue")
+p2 <- p2 + scale_x_log10() + scale_y_log10()
+print(p2)
+
+
+```
+
+Let's merge these forecasted values into a table with the other planets.
+
+```{r}
+
+temp <- rvpl %>% select(c("name", "pl_Rforecast2"))
+myplanets <- merge(confirmedplanets, temp, by="name",all.x=TRUE)
+
+myplanets$new_rade <- myplanets$pl_rade
+
+jj <- which(is.na(myplanets$new_rade))
+myplanets$new_rade[jj] <- myplanets$pl_Rforecast2[jj]
+
+#how many still have missing radii?
+print(paste("Number of planets still missing radii =",length(which(is.na(myplanets$new_rade)))))
+
+# Where are these from?
+temp <- myplanets %>% filter(is.na(new_rade))
+count(temp, pl_discmethod)
+```
+
+Let's see if NExScI's composite table has any of these...
+
+
+```{r}
+
+baseurl<-"https://exoplanetarchive.ipac.caltech.edu/cgi-bin/nstedAPI/nph-nstedAPI?table=compositepars"
+params<-"fpl_hostname,fpl_letter,fpl_name,fpl_discmethod,fpl_disc,fpl_orbper,fpl_smax,fpl_eccen,fpl_bmasse,fpl_bmassreflink,fpl_rade,fpl_radreflink"
+
+#I'd like to pull the references down, but there are some bad characters which munge up my ability to read in things afterwards.  Let's try just putting the references at the end and see if that fixes things...
+params<-"fpl_hostname,fpl_letter,fpl_name,fpl_discmethod,fpl_disc,fpl_orbper,fpl_smax,fpl_eccen,fpl_bmasse,fpl_rade,fpl_bmassreflink,fpl_radreflink"
+
+address<-paste(baseurl,"&select=",params,sep="")
+
+download.file(address, "data/compositeplanets.csv")
+
+print(paste("Composite planets table downloaded on ",date()))
+
+```
+
+```{r}
+compositeplanets <- read_csv("data/compositeplanets.csv", comment = "#")
+
+compositeplanets$my_name <- paste(compositeplanets$fpl_hostname, compositeplanets$fpl_letter)
+```
+
+```{r}
+
+composite_simplified <- compositeplanets %>% select(my_name,fpl_rade)
+```
+
+
+```{r}
+planets <- merge(myplanets, composite_simplified, by.x="name",by.y="my_name",all=TRUE)
+```
+
+```{r}
+jj <- which(is.na(planets$new_rade))
+
+planets$new_rade[jj] <- planets$fpl_rade[jj]
+
+#how many still have missing radii?
+print(paste("Number of planets still missing radii =",length(which(is.na(planets$new_rade)))))
+
+# Where are these from?
+temp <- planets %>% filter(is.na(new_rade))
+count(temp, pl_discmethod)
+```
+
+Ok, I think that's probably about as good as we're going to get.  Let's write it out!
+
+```{r}
+write_csv(planets,"outputs/planets_to_plot.csv")
+
+saveRDS(planets,"RDS/planets_to_plot.rds")
+```
+
+And to check these, let's go ahead and make some canonical plots....
+
+
+
+I tend to say prekepler is anything before 2009, but kepler planets didn't start getting published until 2010.  Just out of curiousity -- how many planets were discovered in 2009?
+
+
+
+```{r}
+temp <- filter(planets, pl_disc == 2009)
+print(paste(nrow(temp), "planets were discovered in 2009"))
+
+temp <- filter(planets, pl_disc < 2009)
+print(paste(nrow(temp), "planets were discovered before 2009"))
+
+temp <- filter(planets,pl_disc <= 2009)
+```
+
+Nope -- I was wrong!!!  The first three Kepler planets are labeled as discovered in 2009 by NExScI.  Let's stick with the prior to launch (modulo 2 months) count.
+
+
+```{r}
+prekepler<-filter(planets, pl_disc < 2009)
+
+
+
+baseplot<-ggplot(prekepler) + theme_kepler() + ylab("Size Relative to Earth (Radius)") +
+  xlab("Orbital Period (Days)")
+
+myylim<-c(0.3,25)
+myxlim<-c(0.1,1000)
+mycol1<-"blue"
+mycol2<-"yellow"
+mycol5<-"pink"
+mycol3<-mycol2
+mycol4<-mycol1
+baseplot2 <- baseplot + scale_x_log10(limits=myxlim,breaks=c(1,10,100,1000)) + 
+  scale_y_log10(limits=myylim,breaks=c(1,4,10,20,40))
+baseplot3 <- baseplot2 + geom_segment(aes(x=0.1,xend=1000,y=1,yend=1),col="white",size=0.1)
+baseplot3 <- baseplot3 + geom_segment(aes(x=0.1,xend=1000,y=3.86, yend=3.86),col="white",size=0.1)
+baseplot3 <- baseplot3 + geom_segment(aes(x=0.1,xend=1000,y=10.97,yend=10.97),col="white",size=0.1)
+
+preplot <- baseplot3 + geom_point(aes(x=pl_orbper,y=new_rade),shape=21,fill=mycol1,col="black",size=2)
+
+print(preplot)
+ggsave("plots/pre_kepler.eps")
+
+
+kepfacility <- c("Kepler","K2")
+
+
+postkepler<-filter(planets, pl_disc >=2009)
+
+postplot <- preplot + geom_point(data=postkepler,aes(x=pl_orbper,y=new_rade),
+                                 shape=21,fill=mycol2,col="black",size=2)
+print(postplot)
+ggsave("plots/post_kepler.eps")
+
+
+kepler <- filter(planets,pl_facility %in% kepfacility)
+
+postplot2 <- preplot + geom_point(data=kepler,aes(x=pl_orbper,y=new_rade),
+                                 shape=21,fill=mycol2,col="black",size=2)
+
+
+print(postplot2)
+ggsave("plots/kepleronly.eps")
+
+
+notkep_post <- filter(postkepler,pl_facility != "Kepler")
+notkep_post <- filter(notkep_post, pl_facility != "K2")
+
+notkeplerplot<- preplot + geom_point(data=notkep_post,aes(x=pl_orbper,y=new_rade),
+                                 shape=21,fill=mycol5,col="black",size=2) 
+
+print(notkeplerplot)
+ggsave("plots/notkepler.eps")
+
+pastaplot<- notkeplerplot + geom_point(data=kepler,aes(x=pl_orbper,y=new_rade),
+                                 shape=21,fill=mycol2,col="black",size=2)
+
+
+print(pastaplot)
+ggsave("plots/post_kepler2.eps")
+
+```
+
+
+
+
+
+
+
+
+```{r}
+
+mycol1<-"blue"
+mycol2<-"yellow"
+mycol5<-"pink"
+
+baseplot <- ggplot(planets) + theme_kepler() + ylab("Cummulative # of Planets") + xlab("Year")
+baseplot <- baseplot + xlim(c(2000, 2020))
+pp1 <- baseplot + geom_bar(aes(x=pl_disc,y=cumsum(..count..)),fill=mycol1)
+print(pp1)
+
+kep <- planets %>% filter(pl_facility %in% kepfacility)
+pp2 <- pp1 + geom_bar(data=kep,aes(x=pl_disc,y=cumsum(..count..)),fill=mycol2)
+print(pp2)
+
+ggsave("plots/cum_counts.eps")
+
+
+
+
+```
+
+
+
