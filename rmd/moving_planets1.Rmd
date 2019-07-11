@@ -1,0 +1,271 @@
+---
+title: "Animated Planets"
+author: "J. Dotson"
+date: "6/15/2019"
+output: html_document
+---
+
+Trying my hand at making some animated planet plots...
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+require(ggplot2)
+require(dplyr)
+require(tidyverse)
+require(readr)
+require(RColorBrewer)
+require(ggforce)
+require(ggthemes)
+require(gridExtra)
+require(gganimate)
+require(tidyr)
+
+myecho=FALSE
+knitr::opts_knit$set(root.dir = '../.')
+```
+
+Using the planet property table created in planethistory_base.  
+
+```{r }
+
+p_planets <- readRDS("RDS/planets_to_plot.rds")
+
+```
+
+Starting with our usual scatter plot...
+
+```{r }
+
+baseplot<-ggplot(p_planets) + theme_bw() +  ylab("Size Relative to Earth (Radius)") +
+  xlab("Orbital Period (Days)")
+
+myylim<-c(0.3,25)
+myxlim<-c(0.1,1000)
+
+baseplot2 <- baseplot + scale_x_log10(limits=myxlim,breaks=c(1,10,100,1000)) + 
+  scale_y_log10(limits=myylim,breaks=c(1,4,10,20,40))
+
+thisplot <- baseplot2 + geom_point(aes(x=pl_orbper,y=new_rade,group=seq_along(pl_disc)),
+                                   shape=21,fill="red",col="white",size=4)
+#
+print(thisplot)
+
+thisplot <- thisplot + transition_time(pl_disc) + labs(title="Year: {floor(frame_time)}")
+thisplot <- thisplot + shadow_mark(past=TRUE, col="white",fill="darkgrey") + enter_appear()
+thisplot <- thisplot + theme(plot.title=element_text(size=16),
+                             axis.title.x=element_text(size=14),
+                             axis.title.y=element_text(size=14))
+#thisplot <- thisplot + coord_fixed(ratio=0.8)
+animate(thisplot, nframes = 300,renderer = av_renderer(),width=1200, height=800, res=144)
+#animate(thisplot, nframes=300)
+
+#animate(thisplot, nframes=300, renderer = ffmpeg_renderer())
+
+
+
+```
+
+
+```{r}
+anim_save("plots/scatter_history.gif")
+```
+
+
+```{r}
+baseplot<-ggplot(p_planets) + theme_bw() +  xlab("Size Relative to Earth (Radius)") 
+
+
+thisbarplot <- baseplot + geom_histogram(aes(x=new_rade))
+#
+print(thisbarplot)
+
+#thisplot <- thisplot + transition_time(pl_disc) + labs(title="Year: {floor(frame_time)}")
+#thisplot <- thisplot + shadow_mark(past=TRUE, col="white",fill="darkgrey") + enter_appear()
+#animate(thisplot, nframes = 300)
+
+```
+
+Let's sort the planets into size bins...
+
+Using the bins we've used in our public materials (btw, NExScI uses these bins also...)
+
+Earth-size:  < 1.25 Re
+Super earth size: 1.25 - 2Re
+Neptune size: 2 - 6 Re
+Jupiter size: 6 - 15 Re
+larger: 15 - 25 Re
+
+
+mutate(gradebook, letter = ifelse(grade %in% 60:69, "D",
+                                     ifelse(grade %in% 70:79, "C",
+                                            ifelse(grade %in% 80:89, "B",
+                                                   ifelse(grade %in% 90:99, "A", "F")))))
+
+```{r}
+
+earth_max <- 1.25
+super_earth_max <- 2.0
+neptune_max <- 6.0
+jupiter_max <- 15.0
+
+p_planets$size <- rep(NA, nrow(p_planets))
+
+p_planets <- mutate(p_planets, size = ifelse(((new_rade > neptune_max) & (new_rade <= jupiter_max)), "Jupiter",
+                                             ifelse(((new_rade > super_earth_max) & (new_rade <= neptune_max)), "Neptune",
+                                                    ifelse(((new_rade > earth_max)& (new_rade <= super_earth_max)), "SuperEarth",
+                                                           ifelse(((new_rade > 0) & (new_rade <= earth_max)), "Earth", "Huge")))))
+
+
+```
+
+
+theTable$Position <- factor(theTable$Position, levels = c(...))
+
+```{r}
+
+#just for now, remove the planets without a radius...
+rad_planets <- p_planets %>% filter(!is.na(size))
+
+rad_planets$size <- factor(rad_planets$size, levels=c("Earth","SuperEarth","Neptune","Jupiter","Huge"))
+
+baseplot <- ggplot(rad_planets) + theme_bw()
+
+bar_p <- baseplot + geom_bar(aes(size,col=size, fill=size))
+print(bar_p)
+```
+
+
+```{r}
+bar_p <- bar_p + transition_time(pl_disc) + labs(title="Year: {floor(frame_time)}")
+bar_p <- bar_p + theme(plot.title=element_text(size=16),
+                             axis.title.x=element_text(size=14),
+                             axis.title.y=element_text(size=14))
+#thisplot <- thisplot + coord_fixed(ratio=0.6)
+animate(bar_p, nframes = 300,renderer = av_renderer(),width=1200, height=800, res=144)
+
+#animate(bar_p, nframes=300)
+```
+
+Which is cool, but I actually want the cumulative version of this -- so need to reorganize the data abit...
+
+Need column for count, size, and year.  (I think that would be the tidy configuration...)
+
+I can think of several ways to put this together...
+
+First figure out how many of each size were discovered in a given year.
+
+
+```{r}
+temp <- rad_planets %>% filter(size == "Earth")
+earth_history <- count(temp, pl_disc)
+colnames(earth_history) <- c("year", "Earths")
+
+temp <- rad_planets %>% filter(size == "SuperEarth")
+sd_history <- count(temp, pl_disc)
+colnames(sd_history) <- c("year", "SuperEarths")
+
+temp <- rad_planets %>% filter(size == "Neptune")
+nep_history <- count(temp, pl_disc)
+colnames(nep_history) <- c("year", "Neptunes")
+
+temp <- rad_planets %>% filter(size == "Jupiter")
+jup_history <- count(temp, pl_disc)
+colnames(jup_history) <- c("year","Jupiters")
+
+temp <- rad_planets %>% filter(size == "Huge")
+huge_history <- count(temp, pl_disc)
+colnames(huge_history) <- c("year", "HugePlanets")
+
+disc_history <- count(rad_planets, pl_disc)
+colnames(disc_history) <- c("year", "Planets")
+
+size_history <- merge(disc_history, earth_history, by.x="year", by.y="year", all.x=TRUE)
+size_history <- merge(size_history, sd_history, by.x="year",by.y="year",all.x=TRUE)
+size_history <- merge(size_history, nep_history, by.x="year", by.y="year",all.x=TRUE)
+size_history <- merge(size_history, jup_history, by.x="year", by.y="year", all.x=TRUE)
+size_history <- merge(size_history, huge_history, by.x="year", by.y = "year", all.x=TRUE)
+
+
+
+
+```
+
+Next calculate the cumulative number in each size bin as a function of time.
+
+```{r}
+cum_column <- function(myx, myy){
+  myresult <- tibble(x = myx, y=myy)
+  jj <- which(is.na(myresult$y))
+  myresult$y[jj] <- 0
+  myresult$cum <- rep(0,nrow(myresult))
+  myresult$cum[1] <- myresult$y[1]
+  for (i in 2:length(myx)){
+    myresult$cum[i] <- myresult$cum[i-1] + myresult$y[i]
+  }
+  return(myresult$cum)
+}
+```
+
+
+```{r}
+size_history$earth_cum <- cum_column(size_history$year, size_history$Earths)
+size_history$sd_cum <- cum_column(size_history$year, size_history$SuperEarths)
+size_history$nep_cum <- cum_column(size_history$year, size_history$Neptunes)
+size_history$jup_cum <- cum_column(size_history$year, size_history$Jupiters)
+size_history$huge_cum <- cum_column(size_history$year, size_history$HugePlanets)
+```
+
+
+And now put the cumulative counts into a tidy long format
+```{r}
+
+temp <- size_history %>% select(c("year", "earth_cum", "sd_cum","nep_cum","jup_cum","huge_cum"))
+colnames(temp) <- c("year","earths","superearths","neptunes","jupiters","larger")
+
+size_history_long <- gather(temp, size, count, earths:larger)
+
+
+size_history_long$size_f <- factor(size_history_long$size, levels=c("earths","superearths","neptunes","jupiters","larger"))
+
+```
+
+rad_planets$size <- factor(rad_planets$size, levels=c("Earth","SuperEarth","Neptune","Jupiter","Huge"))
+
+
+Finally plot!
+```{r}
+
+temp <- size_history_long %>% filter(year == 2019)
+
+baseplot <- ggplot(temp) + theme_bw()
+
+p1 <- baseplot + geom_bar(aes(x=size_f, y=count, col=size,fill=size),stat="identity")
+print(p1)
+```
+
+And animate...
+
+
+```{r}
+baseplot <- ggplot(size_history_long) + theme_bw()
+
+p1 <- baseplot + geom_bar(aes(x=size_f, y=count, col=size,fill=size),stat="identity")
+p1<- p1 + xlab("") + ylab("Number Known")
+p1 <- p1 + theme(legend.position = "none")
+p1 <- p1 + theme(axis.text=element_text(size=14))
+p1 <- p1 + theme(axis.title=element_text(size=16))
+p1 <- p1 + theme(plot.title=element_text(size=20, face="bold",hjust=0.5))
+p1 <- p1 +  transition_time(year) + labs(title="Year: {floor(frame_time)}")
+p1 <- p1 + theme(axis.title.x = element_blank())
+animate(p1, nframes=300, width=1200, height=800, res=144, renderer=av_renderer())             
+#animate(p1, nframes=300, width=600, height=500, end_pause=30)
+```
+
+```{r}
+anim_save("plots/size_history.gif")
+```
+
+
+

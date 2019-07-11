@@ -218,7 +218,7 @@ baseurl<-"https://exoplanetarchive.ipac.caltech.edu/cgi-bin/nstedAPI/nph-nstedAP
 params<-"fpl_hostname,fpl_letter,fpl_name,fpl_discmethod,fpl_disc,fpl_orbper,fpl_smax,fpl_eccen,fpl_bmasse,fpl_bmassreflink,fpl_rade,fpl_radreflink"
 
 #I'd like to pull the references down, but there are some bad characters which munge up my ability to read in things afterwards.  Let's try just putting the references at the end and see if that fixes things...
-params<-"fpl_hostname,fpl_letter,fpl_name,fpl_discmethod,fpl_disc,fpl_orbper,fpl_smax,fpl_eccen,fpl_bmasse,fpl_rade,fpl_bmassreflink,fpl_radreflink"
+params<-"fpl_hostname,fpl_letter,fpl_name,fpl_discmethod,fpl_disc,fpl_orbper,fpl_smax,fpl_eccen,fpl_bmasse,fpl_rade,fpl_eqt,fpl_insol,fpl_bmassreflink,fpl_radreflink"
 
 address<-paste(baseurl,"&select=",params,sep="")
 
@@ -236,8 +236,18 @@ compositeplanets$my_name <- paste(compositeplanets$fpl_hostname, compositeplanet
 
 ```{r}
 
-composite_simplified <- compositeplanets %>% select(my_name,fpl_rade)
+composite_simplified <- compositeplanets %>% select(my_name,fpl_rade,fpl_eqt,fpl_insol)
 ```
+
+```{r}
+print(paste("Number without insolation = ", length(which(is.na(compositeplanets$fpl_insol)))))
+
+print(paste("Number without equilibrium temp = ", length(which(is.na(compositeplanets$fpl_eqt)))))
+
+print(paste("Number without distance = ", length(which(is.na(confirmedplanets$st_dist)))))
+```
+
+June 15, may come back later and try to add in insolation and equilibrium temperatures -- but let's leave that aside for just a wee bit...
 
 
 ```{r}
