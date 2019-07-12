@@ -5,7 +5,7 @@ date: "6/15/2019"
 output: html_document
 ---
 
-Trying my hand at making some animated planet plots...  Be forewarned -- this version has lots of trial and error...
+Animated plots showing evolution of confirmed planets over time...
 
 
 ```{r setup, include=FALSE}
@@ -48,7 +48,7 @@ baseplot2 <- baseplot + scale_x_log10(limits=myxlim,breaks=c(1,10,100,1000)) +
   scale_y_log10(limits=myylim,breaks=c(1,4,10,20,40))
 
 thisplot <- baseplot2 + geom_point(aes(x=pl_orbper,y=new_rade,group=seq_along(pl_disc)),
-                                   shape=21,fill="red",col="white",size=4)
+                                   shape=21,fill="purple3",col="white",size=4)
 #
 print(thisplot)
 
@@ -57,11 +57,14 @@ thisplot <- thisplot + shadow_mark(past=TRUE, col="white",fill="darkgrey") + ent
 thisplot <- thisplot + theme(plot.title=element_text(size=16),
                              axis.title.x=element_text(size=14),
                              axis.title.y=element_text(size=14))
-#thisplot <- thisplot + coord_fixed(ratio=0.8)
-animate(thisplot, nframes = 300,renderer = av_renderer(),width=1200, height=800, res=144)
-#animate(thisplot, nframes=300)
 
-#animate(thisplot, nframes=300, renderer = ffmpeg_renderer())
+
+# this call to animate will make an mp4
+#animate(thisplot, nframes = 300,renderer = av_renderer(),width=1200, height=800, res=144)
+
+# this call to animate will make a gif
+animate(thisplot, nframes=300, width=1200, height=800, res=144) 
+
 
 
 
@@ -72,20 +75,6 @@ animate(thisplot, nframes = 300,renderer = av_renderer(),width=1200, height=800,
 anim_save("plots/scatter_history.gif")
 ```
 
-
-```{r}
-baseplot<-ggplot(p_planets) + theme_bw() +  xlab("Size Relative to Earth (Radius)") 
-
-
-thisbarplot <- baseplot + geom_histogram(aes(x=new_rade))
-#
-print(thisbarplot)
-
-#thisplot <- thisplot + transition_time(pl_disc) + labs(title="Year: {floor(frame_time)}")
-#thisplot <- thisplot + shadow_mark(past=TRUE, col="white",fill="darkgrey") + enter_appear()
-#animate(thisplot, nframes = 300)
-
-```
 
 Let's sort the planets into size bins...
 
@@ -121,7 +110,7 @@ p_planets <- mutate(p_planets, size = ifelse(((new_rade > neptune_max) & (new_ra
 ```
 
 
-theTable$Position <- factor(theTable$Position, levels = c(...))
+
 
 ```{r}
 
@@ -133,26 +122,22 @@ rad_planets$size <- factor(rad_planets$size, levels=c("Earth","SuperEarth","Nept
 baseplot <- ggplot(rad_planets) + theme_bw()
 
 bar_p <- baseplot + geom_bar(aes(size,col=size, fill=size))
+
+bar_p<- bar_p + xlab("") + ylab("Number Known")
+bar_p <- bar_p + theme(legend.position = "none")
+bar_p <- bar_p + theme(axis.text=element_text(size=14))
+bar_p <- bar_p + theme(axis.title=element_text(size=16))
+bar_p <- bar_p + theme(plot.title=element_text(size=20, face="bold",hjust=0.5))
+
+
 print(bar_p)
 ```
 
 
-```{r}
-bar_p <- bar_p + transition_time(pl_disc) + labs(title="Year: {floor(frame_time)}")
-bar_p <- bar_p + theme(plot.title=element_text(size=16),
-                             axis.title.x=element_text(size=14),
-                             axis.title.y=element_text(size=14))
-#thisplot <- thisplot + coord_fixed(ratio=0.6)
-animate(bar_p, nframes = 300,renderer = av_renderer(),width=1200, height=800, res=144)
 
-#animate(bar_p, nframes=300)
-```
+To animate, we need to reorganize the data bit so that the cumulative counts per year are available. 
 
-Which is cool, but I actually want the cumulative version of this -- so need to reorganize the data abit...
-
-Need column for count, size, and year.  (I think that would be the tidy configuration...)
-
-I can think of several ways to put this together...
+Need column for count, size, and year.  
 
 First figure out how many of each size were discovered in a given year.
 
@@ -231,8 +216,6 @@ size_history_long$size_f <- factor(size_history_long$size, levels=c("earths","su
 
 ```
 
-rad_planets$size <- factor(rad_planets$size, levels=c("Earth","SuperEarth","Neptune","Jupiter","Huge"))
-
 
 Finally plot!
 ```{r}
@@ -242,6 +225,11 @@ temp <- size_history_long %>% filter(year == 2019)
 baseplot <- ggplot(temp) + theme_bw()
 
 p1 <- baseplot + geom_bar(aes(x=size_f, y=count, col=size,fill=size),stat="identity")
+p1<- p1 + xlab("") + ylab("Number Known")
+p1 <- p1 + theme(legend.position = "none")
+p1 <- p1 + theme(axis.text=element_text(size=14))
+p1 <- p1 + theme(axis.title=element_text(size=16))
+p1 <- p1 + theme(plot.title=element_text(size=20, face="bold",hjust=0.5))
 print(p1)
 ```
 
@@ -258,9 +246,10 @@ p1 <- p1 + theme(axis.text=element_text(size=14))
 p1 <- p1 + theme(axis.title=element_text(size=16))
 p1 <- p1 + theme(plot.title=element_text(size=20, face="bold",hjust=0.5))
 p1 <- p1 +  transition_time(year) + labs(title="Year: {floor(frame_time)}")
-p1 <- p1 + theme(axis.title.x = element_blank())
-animate(p1, nframes=300, width=1200, height=800, res=144, renderer=av_renderer())             
-#animate(p1, nframes=300, width=600, height=500, end_pause=30)
+
+
+#animate(p1, nframes=300, width=1200, height=800, res=144, renderer=av_renderer())  #makes mp4         
+animate(p1, nframes=300, width=600, height=500, end_pause=30) #makes gif
 ```
 
 ```{r}
