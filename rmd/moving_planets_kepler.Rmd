@@ -1,0 +1,599 @@
+---
+title: "Animated Planets"
+author: "J. Dotson"
+date: "6/15/2019"
+output: html_document
+---
+
+Animated plots showing evolution of confirmed planets over time...
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+require(ggplot2)
+require(dplyr)
+require(tidyverse)
+require(readr)
+require(RColorBrewer)
+require(ggforce)
+require(ggthemes)
+require(gridExtra)
+require(gganimate)
+require(tidyr)
+
+myecho=FALSE
+knitr::opts_knit$set(root.dir = '../.')
+```
+
+Using the planet property table created in planethistory_base.  
+
+```{r }
+
+p_planets <- readRDS("RDS/planets_to_plot.rds")
+
+```
+
+T
+```{r}
+p_planets$facility <- rep("not Kepler", nrow(p_planets))
+jj <- which(p_planets$pl_instrument == "Kepler CCD Array")
+p_planets$facility[jj] <- "Kepler"
+
+count(p_planets, facility)
+```
+
+
+here are a couple of years for which no planets are discovered.  Lets add some empty planets for those years.
+
+```{r}
+count(p_planets, pl_disc)
+
+# need 1990, 1991, and 1993
+orig_p_planets <- p_planets
+
+p_planets <- add_row(p_planets,pl_disc=1990, facility="not Kepler")
+p_planets <- add_row(p_planets,pl_disc=1991, facility="not Kepler")
+p_planets <- add_row(p_planets,pl_disc=1993, facility="not Kepler")
+
+
+```
+
+
+
+Starting with our usual scatter plot...
+
+```{r }
+
+baseplot<-ggplot(p_planets) + theme_bw() +  ylab("Size Relative to Earth (Radius)") +
+  xlab("Orbital Period (Days)")
+
+myylim<-c(0.3,25)
+myxlim<-c(0.1,1000)
+
+baseplot2 <- baseplot + scale_x_log10(limits=myxlim,breaks=c(1,10,100,1000)) + 
+  scale_y_log10(limits=myylim,breaks=c(1,4,10,20,40))
+
+thisplot <- baseplot2 + geom_point(aes(x=pl_orbper,y=new_rade,group=seq_along(pl_disc)),
+                                   shape=21,fill="purple3",col="white",size=4)
+#
+print(thisplot)
+
+thisplot <- thisplot + transition_time(pl_disc) + labs(title="Year: {floor(frame_time)}")
+thisplot <- thisplot + shadow_mark(past=TRUE, col="white",fill="darkgrey") + enter_appear()
+thisplot <- thisplot + theme(plot.title=element_text(size=16),
+                             axis.title.x=element_text(size=14),
+                             axis.title.y=element_text(size=14))
+
+
+# this call to animate will make an mp4
+#animate(thisplot, nframes = 300,renderer = av_renderer(),width=1200, height=800, res=144)
+animate(thisplot, nframes = 30, fps=1, end_pause=5,renderer = av_renderer(),width=1200, height=750, res=144)
+
+# this call to animate will make a gif
+#animate(thisplot, nframes=300, width=1200, height=800, res=144) 
+#animate(thisplot,nframes=300)
+
+
+
+
+```
+
+
+```{r}
+anim_save("plots/scatter_history.gif")
+```
+
+Let's make a version that highlights the Kepler planets.  First let's make a Kepler/not Kepler column to use as a key.
+
+
+```{r}
+baseplot<-ggplot(p_planets) + theme_bw() +  ylab("Size Relative to Earth (Radius)") +
+  xlab("Orbital Period (Days)")
+
+myylim<-c(0.3,25)
+myxlim<-c(0.1,1000)
+
+baseplot2 <- baseplot + scale_x_log10(limits=myxlim,breaks=c(1,10,100,1000)) + 
+  scale_y_log10(limits=myylim,breaks=c(1,4,10,20,40))
+
+thisplot <- baseplot2 + geom_point(aes(x=pl_orbper,y=new_rade,group=seq_along(pl_disc),
+                                       fill=facility),
+                                   shape=21,col="white",size=4)
+#
+print(thisplot)
+
+thisplot <- thisplot + transition_time(pl_disc) + labs(title="Year: {floor(frame_time)}")
+thisplot <- thisplot + shadow_mark(past=TRUE, col="white",fill="darkgrey") + enter_appear()
+thisplot <- thisplot + theme(plot.title=element_text(size=16),
+                             axis.title.x=element_text(size=14),
+                             axis.title.y=element_text(size=14))
+
+
+# this call to animate will make an mp4
+#animate(thisplot, nframes = 300,renderer = av_renderer(),width=1200, height=800, res=144)
+
+# this call to animate will make a gif
+#animate(thisplot, nframes=300, width=1200, height=800, res=144) 
+animate(thisplot,nframes=300)
+
+```
+
+
+
+It looks like gganimate has problems when a facet doesn't have data in a given transition step.  So, need to add some empty points for a few years.  But which...
+
+```{r}
+
+temp <- p_planets[jj,]
+
+count(temp,pl_disc)
+
+
+```
+
+So, let's add empty planets for Kepler for every year between 1989 and 2008 (inclusive)
+
+```{r}
+p_planets <- add_row(p_planets, pl_disc=1989:2008, facility="Kepler")
+```
+
+
+Would like to label the number of planets...
+```{r}
+
+
+mycum <- function(df){
+  df$cum <- rep(0, nrow(df))
+  df$cum[1] <- df$n[1]
+  for (i in 2:nrow(df)){
+    df$cum[i] <- df$n[i] + df$cum[i-1]
+  }
+  return(df)
+}
+
+
+p_planets2 <- p_planets
+p_planets2$count <- rep(NA,nrow(p_planets2))
+
+jj <- which(orig_p_planets$facility == "Kepler")
+kepcount <- count(orig_p_planets[jj,], pl_disc)
+kepcount <- mycum(kepcount)
+p_planets2 <- add_row(p_planets2, pl_disc=1989:2008,facility="Kepler", count=0)
+p_planets2 <- add_row(p_planets2, pl_disc=kepcount$pl_disc,facility="Kepler",count=kepcount$cum)
+
+jj <- which(orig_p_planets$facility == "not Kepler")
+notcount <- count(orig_p_planets[jj,], pl_disc)
+notcount <- mycum(notcount)
+p_planets2 <- add_row(p_planets2, pl_disc=1990:1991, facility="not Kepler",count=1)
+p_planets2 <- add_row(p_planets2, pl_disc=1993, facility="not Kepler", count=3)
+p_planets2 <- add_row(p_planets2, pl_disc=notcount$pl_disc, facility="not Kepler", count=notcount$cum)
+
+
+```
+
+
+
+```{r}
+baseplot<-ggplot(p_planets2) + theme_bw() +  ylab("Size Relative to Earth (Radius)") +
+  xlab("Orbital Period (Days)")
+
+myylim<-c(0.3,25)
+myxlim<-c(0.1,1000)
+
+baseplot2 <- baseplot + scale_x_log10(limits=myxlim,breaks=c(1,10,100,1000)) + 
+  scale_y_log10(limits=myylim,breaks=c(1,4,10,20,40))
+
+thisplot <- baseplot2 + geom_point(aes(x=pl_orbper,y=new_rade,group=seq_along(pl_disc)),
+                                   shape=21,fill="purple3",col="white",size=4)
+thisplot <- thisplot + facet_grid(aes(cols=facility))
+#
+print(thisplot)
+
+thisplot <- thisplot + transition_time(pl_disc) + labs(title="Year: {floor(frame_time)}")
+thisplot <- thisplot + shadow_mark(past=TRUE, col="white",fill="darkgrey",exclude_layer=2) 
+thisplot <- thisplot + enter_appear()
+thisplot <- thisplot + theme(plot.title=element_text(size=18),
+                             axis.title.x=element_text(size=14),
+                             axis.title.y=element_text(size=14),
+                             strip.text.x = element_text(size = 14))
+thisplot <- thisplot + geom_label(aes(label=floor(count),x=100,y=0.5), 
+                                  size=10, fill="white",
+                                  linetype=0)
+#thisplot <- thisplot + shadow_mark(past=TRUE, exclude_layer=1)
+
+
+# this call to animate will make an mp4
+animate(thisplot, nframes = 30, fps=1, end_pause=5,renderer = av_renderer(),width=1200, height=750, res=144)
+
+# this call to animate will make a gif
+#animate(thisplot, nframes=300, width=1200, height=800, res=144) 
+animate(thisplot,nframes=30,fps=1, end_pause=5, width=800, height=500)
+```
+
+```{r}
+anim_save("plots/compare_scatter_history.gif")
+```
+
+
+Let's sort the planets into size bins...
+
+Using the bins we've used in our public materials (btw, NExScI uses these bins also...)
+
+Earth-size:  < 1.25 Re
+Super earth size: 1.25 - 2Re
+Neptune size: 2 - 6 Re
+Jupiter size: 6 - 15 Re
+larger: 15 - 25 Re
+
+
+mutate(gradebook, letter = ifelse(grade %in% 60:69, "D",
+                                     ifelse(grade %in% 70:79, "C",
+                                            ifelse(grade %in% 80:89, "B",
+                                                   ifelse(grade %in% 90:99, "A", "F")))))
+
+```{r}
+
+earth_max <- 1.25
+super_earth_max <- 2.0
+neptune_max <- 6.0
+jupiter_max <- 15.0
+
+p_planets <- orig_p_planets
+
+p_planets$size <- rep(NA, nrow(p_planets))
+
+p_planets <- mutate(p_planets, size = ifelse(((new_rade > neptune_max) & (new_rade <= jupiter_max)), "Jupiter",
+                                             ifelse(((new_rade > super_earth_max) & (new_rade <= neptune_max)), "Neptune",
+                                                    ifelse(((new_rade > earth_max)& (new_rade <= super_earth_max)), "SuperEarth",
+                                                           ifelse(((new_rade > 0) & (new_rade <= earth_max)), "Earth", "Huge")))))
+
+
+```
+
+
+
+
+```{r}
+
+#just for now, remove the planets without a radius...
+rad_planets <- p_planets %>% filter(!is.na(size))
+
+rad_planets$size <- factor(rad_planets$size, levels=c("Earth","SuperEarth","Neptune","Jupiter","Huge"))
+
+baseplot <- ggplot(rad_planets) + theme_bw()
+
+bar_p <- baseplot + geom_bar(aes(size,col=size, fill=size))
+
+bar_p<- bar_p + xlab("") + ylab("Number Known")
+bar_p <- bar_p + theme(legend.position = "none")
+bar_p <- bar_p + theme(axis.text=element_text(size=14))
+bar_p <- bar_p + theme(axis.title=element_text(size=16))
+bar_p <- bar_p + theme(plot.title=element_text(size=20, face="bold",hjust=0.5))
+
+
+print(bar_p)
+```
+
+
+
+To animate, we need to reorganize the data bit so that the cumulative counts per year are available. 
+
+Need column for count, size, and year.  
+
+First figure out how many of each size were discovered in a given year.
+
+
+```{r}
+temp <- rad_planets %>% filter(size == "Earth")
+earth_history <- count(temp, pl_disc)
+colnames(earth_history) <- c("year", "Earths")
+
+temp <- rad_planets %>% filter(size == "SuperEarth")
+sd_history <- count(temp, pl_disc)
+colnames(sd_history) <- c("year", "SuperEarths")
+
+temp <- rad_planets %>% filter(size == "Neptune")
+nep_history <- count(temp, pl_disc)
+colnames(nep_history) <- c("year", "Neptunes")
+
+temp <- rad_planets %>% filter(size == "Jupiter")
+jup_history <- count(temp, pl_disc)
+colnames(jup_history) <- c("year","Jupiters")
+
+temp <- rad_planets %>% filter(size == "Huge")
+huge_history <- count(temp, pl_disc)
+colnames(huge_history) <- c("year", "HugePlanets")
+
+disc_history <- count(rad_planets, pl_disc)
+colnames(disc_history) <- c("year", "Planets")
+
+size_history <- merge(disc_history, earth_history, by.x="year", by.y="year", all.x=TRUE)
+size_history <- merge(size_history, sd_history, by.x="year",by.y="year",all.x=TRUE)
+size_history <- merge(size_history, nep_history, by.x="year", by.y="year",all.x=TRUE)
+size_history <- merge(size_history, jup_history, by.x="year", by.y="year", all.x=TRUE)
+size_history <- merge(size_history, huge_history, by.x="year", by.y = "year", all.x=TRUE)
+
+
+
+
+```
+
+Next calculate the cumulative number in each size bin as a function of time.
+
+```{r}
+cum_column <- function(myx, myy){
+  myresult <- tibble(x = myx, y=myy)
+  jj <- which(is.na(myresult$y))
+  myresult$y[jj] <- 0
+  myresult$cum <- rep(0,nrow(myresult))
+  myresult$cum[1] <- myresult$y[1]
+  for (i in 2:length(myx)){
+    myresult$cum[i] <- myresult$cum[i-1] + myresult$y[i]
+  }
+  return(myresult$cum)
+}
+```
+
+
+```{r}
+size_history$earth_cum <- cum_column(size_history$year, size_history$Earths)
+size_history$sd_cum <- cum_column(size_history$year, size_history$SuperEarths)
+size_history$nep_cum <- cum_column(size_history$year, size_history$Neptunes)
+size_history$jup_cum <- cum_column(size_history$year, size_history$Jupiters)
+size_history$huge_cum <- cum_column(size_history$year, size_history$HugePlanets)
+```
+
+
+And now put the cumulative counts into a tidy long format
+```{r}
+
+temp <- size_history %>% select(c("year", "earth_cum", "sd_cum","nep_cum","jup_cum","huge_cum"))
+colnames(temp) <- c("year","earth","superearth","neptune","jupiter","larger")
+
+size_history_long <- gather(temp, size, count, earth:larger)
+
+
+size_history_long$size_f <- factor(size_history_long$size, levels=c("earth","superearth","neptune","jupiter","larger"))
+
+```
+
+
+Finally plot!
+```{r}
+
+temp <- size_history_long %>% filter(year == 2019)
+
+baseplot <- ggplot(temp) + theme_bw()
+
+p1 <- baseplot + geom_bar(aes(x=size_f, y=count, col=size,fill=size),stat="identity")
+p1<- p1 + xlab("size") + ylab("Number Known")
+p1 <- p1 + theme(legend.position = "none")
+p1 <- p1 + theme(axis.text=element_text(size=14))
+p1 <- p1 + theme(axis.title=element_text(size=16))
+p1 <- p1 + theme(plot.title=element_text(size=20, face="bold",hjust=0.5))
+print(p1)
+```
+
+And animate...
+
+
+```{r}
+baseplot <- ggplot(size_history_long) + theme_bw()
+
+p1 <- baseplot + geom_bar(aes(x=size_f, y=count, col=size,fill=size),stat="identity")
+p1<- p1 + xlab("size") + ylab("Number Known")
+p1 <- p1 + theme(legend.position = "none")
+p1 <- p1 + theme(axis.text=element_text(size=14))
+p1 <- p1 + theme(axis.title=element_text(size=16))
+p1 <- p1 + theme(plot.title=element_text(size=20, face="bold",hjust=0.5))
+p1 <- p1 +  transition_time(year) + labs(title="Year: {floor(frame_time)}")
+
+
+#animate(p1, nframes=300, width=1200, height=800, res=144, renderer=av_renderer())  #makes mp4         
+animate(p1, nframes=300, width=500, height=300, end_pause=30) #makes gif
+```
+
+```{r}
+anim_save("plots/size_history.gif")
+```
+
+
+Doing this all again, separating kepler and non kepler...
+
+```{r}
+krad_planets <- rad_planets %>% filter(facility == "Kepler")
+
+temp <- krad_planets %>% filter(size == "Earth") 
+earth_history <- count(temp, pl_disc)
+colnames(earth_history) <- c("year", "Earths")
+earth_history <- add_row(earth_history, year=1989:2008, Earths=0)  #adding in empty rows for gganimate
+
+temp <- krad_planets %>% filter(size == "SuperEarth") 
+sd_history <- count(temp, pl_disc)
+colnames(sd_history) <- c("year", "SuperEarths")
+
+temp <- krad_planets %>% filter(size == "Neptune") 
+nep_history <- count(temp, pl_disc)
+colnames(nep_history) <- c("year", "Neptunes")
+
+temp <- krad_planets %>% filter(size == "Jupiter") 
+jup_history <- count(temp, pl_disc)
+colnames(jup_history) <- c("year","Jupiters")
+
+temp <- krad_planets %>% filter(size == "Huge") 
+huge_history <- count(temp, pl_disc)
+colnames(huge_history) <- c("year", "HugePlanets")
+
+disc_history <- count(krad_planets, pl_disc)
+colnames(disc_history) <- c("year", "Planets")
+
+ksize_history <- merge(disc_history, earth_history, by.x="year", by.y="year", all=TRUE)
+ksize_history <- merge(ksize_history, sd_history, by.x="year",by.y="year",all.x=TRUE)
+ksize_history <- merge(ksize_history, nep_history, by.x="year", by.y="year",all.x=TRUE)
+ksize_history <- merge(ksize_history, jup_history, by.x="year", by.y="year", all.x=TRUE)
+ksize_history <- merge(ksize_history, huge_history, by.x="year", by.y = "year", all.x=TRUE)
+
+ksize_history$earth_cum <- cum_column(ksize_history$year, ksize_history$Earths)
+ksize_history$sd_cum <- cum_column(ksize_history$year, ksize_history$SuperEarths)
+ksize_history$nep_cum <- cum_column(ksize_history$year, ksize_history$Neptunes)
+ksize_history$jup_cum <- cum_column(ksize_history$year, ksize_history$Jupiters)
+ksize_history$huge_cum <- cum_column(ksize_history$year, ksize_history$HugePlanets)
+
+temp <- ksize_history %>% select(c("year", "earth_cum", "sd_cum","nep_cum","jup_cum","huge_cum"))
+colnames(temp) <- c("year","earth","superearth","neptune","jupiter","larger")
+
+ksize_history_long <- gather(temp, size, count, earth:larger)
+
+
+ksize_history_long$size_f <- factor(ksize_history_long$size, levels=c("earth","superearth","neptune","jupiter","larger"))
+
+ksize_history_long$facility <- "Kepler"
+
+```
+
+
+```{r}
+nkrad_planets <- rad_planets %>% filter(facility == "not Kepler")
+
+temp <- nkrad_planets %>% filter(size == "Earth") 
+earth_history <- count(temp, pl_disc)
+colnames(earth_history) <- c("year", "Earths")
+earth_history <- add_row(earth_history, year=1990:1991, Earths=0)
+earth_history <- add_row(earth_history, year=1993, Earths=0)
+
+temp <- nkrad_planets %>% filter(size == "SuperEarth") 
+sd_history <- count(temp, pl_disc)
+colnames(sd_history) <- c("year", "SuperEarths")
+
+temp <- nkrad_planets %>% filter(size == "Neptune") 
+nep_history <- count(temp, pl_disc)
+colnames(nep_history) <- c("year", "Neptunes")
+
+temp <- nkrad_planets %>% filter(size == "Jupiter") 
+jup_history <- count(temp, pl_disc)
+colnames(jup_history) <- c("year","Jupiters")
+
+temp <- nkrad_planets %>% filter(size == "Huge") 
+huge_history <- count(temp, pl_disc)
+colnames(huge_history) <- c("year", "HugePlanets")
+
+disc_history <- count(nkrad_planets, pl_disc)
+colnames(disc_history) <- c("year", "Planets")
+
+nksize_history <- merge(disc_history, earth_history, by.x="year", by.y="year", all=TRUE)
+nksize_history <- merge(nksize_history, sd_history, by.x="year",by.y="year",all.x=TRUE)
+nksize_history <- merge(nksize_history, nep_history, by.x="year", by.y="year",all.x=TRUE)
+nksize_history <- merge(nksize_history, jup_history, by.x="year", by.y="year", all.x=TRUE)
+nksize_history <- merge(nksize_history, huge_history, by.x="year", by.y = "year", all.x=TRUE)
+
+nksize_history$earth_cum <- cum_column(nksize_history$year, nksize_history$Earths)
+nksize_history$sd_cum <- cum_column(nksize_history$year, nksize_history$SuperEarths)
+nksize_history$nep_cum <- cum_column(nksize_history$year, nksize_history$Neptunes)
+nksize_history$jup_cum <- cum_column(nksize_history$year, nksize_history$Jupiters)
+nksize_history$huge_cum <- cum_column(nksize_history$year, nksize_history$HugePlanets)
+
+temp <- nksize_history %>% select(c("year", "earth_cum", "sd_cum","nep_cum","jup_cum","huge_cum"))
+colnames(temp) <- c("year","earth","superearth","neptune","jupiter","larger")
+
+nksize_history_long <- gather(temp, size, count, earth:larger)
+
+
+nksize_history_long$size_f <- factor(nksize_history_long$size, levels=c("earth","superearth","neptune","jupiter","larger"))
+
+nksize_history_long$facility <- " not Kepler"
+
+```
+
+
+```{r}
+comp_size_history_long <- rbind(ksize_history_long, nksize_history_long)
+```
+
+Will need to add a few lines for years with no data...
+
+```{r}
+#count(nksize_history_long, year)
+```
+
+```{r}
+#comp_size_history_long <- add_row(comp_size_history_long, year=1990:1991, facility = "not Kepler",size="earth")
+#comp_size_history_long <- add_row(comp_size_history_long, year=1993, facility = "not Kepler",size="earth")
+```
+
+```{r}
+count(ksize_history_long, year)
+```
+
+```{r}
+#comp_size_history_long <- add_row(comp_size_history_long, year=1989:2009, facility = "Kepler",size="earth")
+```
+
+Finally plot!
+```{r}
+
+temp <- comp_size_history_long %>% filter(year == 2019)
+
+baseplot <- ggplot(temp) + theme_bw()
+
+p1 <- baseplot + geom_bar(aes(x=size_f, y=count, col=size,fill=size),stat="identity")
+p1<- p1 + xlab("size") + ylab("Number Known")
+p1 <- p1 + theme(legend.position = "none")
+p1 <- p1 + theme(axis.text=element_text(size=14))
+p1 <- p1 + theme(axis.text.x=element_text(angle=90, hjust=1,vjust=0.5))
+p1 <- p1 + theme(axis.title=element_text(size=16))
+p1 <- p1 + theme(plot.title=element_text(size=20, face="bold",hjust=0.5))
+p1 <- p1 + theme(strip.text.x = element_text(size = 14))
+p1 <- p1 + facet_grid(aes(cols=facility))
+print(p1)
+```
+
+
+And animate...
+
+
+```{r}
+baseplot <- ggplot(comp_size_history_long) + theme_bw()
+
+p1 <- baseplot + geom_bar(aes(x=size_f, y=count, col=size,fill=size),stat="identity")
+p1<- p1 + xlab("size") + ylab("Number Known")
+p1 <- p1 + theme(legend.position = "none")
+p1 <- p1 + theme(axis.text=element_text(size=14))
+p1 <- p1 + theme(axis.text.x=element_text(angle=90, hjust=1,vjust=0.5))
+p1 <- p1 + theme(axis.title=element_text(size=16))
+p1 <- p1 + theme(plot.title=element_text(size=20, face="bold",hjust=0.5))
+p1 <- p1 + theme(strip.text.x = element_text(size = 14))
+#p1 <- p1 + facet_grid(aes(cols=facility))
+p1 <- p1 +  transition_time(year) + labs(title="Year: {floor(frame_time)}")
+
+
+#animate(p1, nframes=300, width=1200, height=800, res=144, renderer=av_renderer())  #makes mp4         
+animate(p1, nframes=300, width=500, height=500, end_pause=30) #makes gif
+```
+
+
+
+
+
+
+
