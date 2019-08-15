@@ -583,15 +583,17 @@ p1 <- p1 + theme(axis.text.x=element_text(angle=90, hjust=1,vjust=0.5))
 p1 <- p1 + theme(axis.title=element_text(size=16))
 p1 <- p1 + theme(plot.title=element_text(size=20, face="bold",hjust=0.5))
 p1 <- p1 + theme(strip.text.x = element_text(size = 14))
-#p1 <- p1 + facet_grid(aes(cols=facility))
+p1 <- p1 + facet_grid(aes(cols=facility))
 p1 <- p1 +  transition_time(year) + labs(title="Year: {floor(frame_time)}")
 
 
-#animate(p1, nframes=300, width=1200, height=800, res=144, renderer=av_renderer())  #makes mp4         
-animate(p1, nframes=300, width=500, height=500, end_pause=30) #makes gif
+animate(p1, nframes=300, width=1200, height=800, res=144, renderer=av_renderer())  #makes mp4         
+#animate(p1, nframes=300, width=800, height=500, end_pause=30) #makes gif
 ```
 
-
+```{r}
+anim_save("plots/comp_size_history.gif")
+```
 
 
 
