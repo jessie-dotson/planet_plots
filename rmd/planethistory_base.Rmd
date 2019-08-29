@@ -218,7 +218,7 @@ baseurl<-"https://exoplanetarchive.ipac.caltech.edu/cgi-bin/nstedAPI/nph-nstedAP
 params<-"fpl_hostname,fpl_letter,fpl_name,fpl_discmethod,fpl_disc,fpl_orbper,fpl_smax,fpl_eccen,fpl_bmasse,fpl_bmassreflink,fpl_rade,fpl_radreflink"
 
 #I'd like to pull the references down, but there are some bad characters which munge up my ability to read in things afterwards.  Let's try just putting the references at the end and see if that fixes things...
-params<-"fpl_hostname,fpl_letter,fpl_name,fpl_discmethod,fpl_disc,fpl_orbper,fpl_smax,fpl_eccen,fpl_bmasse,fpl_rade,fpl_eqt,fpl_insol,fpl_bmassreflink,fpl_radreflink"
+params<-"fpl_hostname,fpl_letter,fpl_name,fpl_discmethod,fpl_disc,fpl_orbper,fpl_smax,fpl_eccen,fpl_bmasse,fpl_bmasseerr1,fpl_bmasseerr2,fpl_rade,fpl_radeerr1,fpl_radeerr2,fpl_eqt,fpl_insol,fpl_bmassprov,fpl_bmassreflink,fpl_radreflink"
 
 address<-paste(baseurl,"&select=",params,sep="")
 
@@ -275,9 +275,17 @@ write_csv(planets,"outputs/planets_to_plot.csv")
 saveRDS(planets,"RDS/planets_to_plot.rds")
 ```
 
+Let's also make a version that keeps all that extra info from the composite table!
+
+```{r}
+planets_moreinfo <- merge(myplanets, compositeplanets, by.x="name",by.y="my_name",all=TRUE)
+
+write_csv(planets_moreinfo,"outputs/planets_moreinfo.csv")
+saveRDS(planets_moreinfo,"RDS/planets_moreinfo.rds")
+```
+
+
 And to check these, let's go ahead and make some canonical plots....
-
-
 
 I tend to say prekepler is anything before 2009, but kepler planets didn't start getting published until 2010.  Just out of curiousity -- how many planets were discovered in 2009?
 

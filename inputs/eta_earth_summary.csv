@@ -1,0 +1,17 @@
+﻿eta,Lsigma,Usigma,reference,year,stellar_types,size_range,HZ_definition,HZ_type,HZ,stellar_flux_range,period_range,semi_major_axis_range,,stellar_radii_range,notes,link
+0.34,0.02,0.02,Zink 2019,2019,GK,0.72 - 1.7,conservative HZ,Kopparapu 2014,conservative,,,,,,,https://arxiv.org/abs/1905.01032
+0.3,0.01,0.002,Zink 2019,2019,GK,0.72 - 1.48,conservative HZ,Kopparapu 2014,conservative,,,,,,,https://arxiv.org/abs/1905.01032
+0.11,0.04,0.04,Petigura 2013,2013,GK,1 - 2,200 < P < 400 days,period,,,200 - 400,,,,,https://arxiv.org/abs/1311.6806
+0.02,0.01,0.01,Catanzarite 2011,2011,FGK,0.8 - 2,0.75 < a < 1.8 AU,semi-major axis,,,,0.75 - 1.8,,,,https://ui.adsabs.harvard.edu/abs/2011ApJ...738..151C/abstract
+0.34,0.14,0.14,Traub 2012,2012,FGK,0.5 - 2,0.72 < a < 2 AU,semi-major axis,,,228 - 1377,0.72 - 2,,,period range used depended on stellar type,https://ui.adsabs.harvard.edu/abs/2012ApJ...745...20T/abstract
+0.24,0.08,0.18,Dressing 2015,2015,M,1 - 1.5,optimistic HZ,Kopparapu 2013,optimistic,,,,,,,https://ui.adsabs.harvard.edu/abs/2015ApJ...807...45D/abstract
+0.48,0.24,0.12,Kopparapu 2013,2013,M,0.5 - 1.4,conservative HZ,Kopparapu 2013,conservative,,,,,,,https://ui.adsabs.harvard.edu/abs/2013ApJ...767L...8K/abstract
+0.53,0.17,0.08,Kopparapu 2013,2013,M,0.5 - 1.4,optimistic HZ,Kopparapu 2013,optimistic,,,,,,,https://ui.adsabs.harvard.edu/abs/2013ApJ...767L...8K/abstract
+0.51,0.2,0.1,Kopparapu 2013,2013,M,0.5 - 2,conservative HZ,Kopparapu 2013,conservative,,,,,,,https://ui.adsabs.harvard.edu/abs/2013ApJ...767L...8K/abstract
+0.61,0.15,0.07,Kopparapu 2013,2013,M,0.5 - 2,optimistic HZ,Kopparapu 2013,optimistic,,,,,,,https://ui.adsabs.harvard.edu/abs/2013ApJ...767L...8K/abstract
+0.064,0.011,0.034,Silburt 2015,2015,0.8 < Rst < 1.2,1 - 2,0.99 < a < 1.7 AU,semi-major axis,,,,0.99 - 1.7,,0.8 - 1.2,,https://ui.adsabs.harvard.edu/abs/2015ApJ...799..180S/abstract
+0.34,0.14,0.14,Mulders 2018,2018,FGKM,0.7 - 1.5,328 < P < 800 days,period,,,328 - 800,,,,,https://ui.adsabs.harvard.edu/abs/2018AJ....156...24M/abstract
+0.3,0.21,0.7,Kopparapu 2018,2018,G ,0.5 - 1,0.28 < Fst < 1.0,stellar flux,,0.28 - 1.0,,,,,,https://iopscience.iop.org/article/10.3847/1538-4357/aab205/pdf
+0.21,0.123,0.33,Kopparapu 2018,2018,G ,1 - 1.75,0.3 < Fst < 1.12,stellar flux,,0.3 - 1.12,,,,,,https://iopscience.iop.org/article/10.3847/1538-4357/aab205/pdf
+0.27,0.24,0.13,Hsu 2019,2019,FGK,0.75 - 1.5,237 < P < 500 days,period,,,237 - 500,,,,,https://ui.adsabs.harvard.edu/abs/2019AJ....158..109H/abstract
+0.16,0.07,0.17,Dressing 2015,2015,M,1 - 1.5,conservative HZ,Kopparapu 2013,conservative,,,,,,,https://ui.adsabs.harvard.edu/abs/2015ApJ...807...45D/abstract
