@@ -32,6 +32,8 @@ Using the planet property table created in planethistory_base.
 
 p_planets <- readRDS("RDS/planets_to_plot.rds")
 
+source("Rscripts/mycolors.R")
+
 ```
 
 Starting with our usual scatter plot...
@@ -48,15 +50,17 @@ baseplot2 <- baseplot + scale_x_log10(limits=myxlim,breaks=c(1,10,100,1000)) +
   scale_y_log10(limits=myylim,breaks=c(1,4,10,20,40))
 
 thisplot <- baseplot2 + geom_point(aes(x=pl_orbper,y=new_rade,group=seq_along(pl_disc)),
-                                   shape=21,fill="purple3",col="white",size=4)
+                                   shape=21,fill=geert_cols("wisteria"),col="white",size=4)
 #
 print(thisplot)
 
-thisplot <- thisplot + transition_time(pl_disc) + labs(title="Year: {floor(frame_time)}")
-thisplot <- thisplot + shadow_mark(past=TRUE, col="white",fill="darkgrey") + enter_appear()
+thisplot <- thisplot + transition_time(pl_disc) + 
+  labs(title="Confirmed Planets: Year = {floor(frame_time)}")
+thisplot <- thisplot + shadow_mark(past=TRUE, col="white",fill=geert_cols("silver")) + enter_appear()
 thisplot <- thisplot + theme(plot.title=element_text(size=16),
                              axis.title.x=element_text(size=14),
-                             axis.title.y=element_text(size=14))
+                             axis.title.y=element_text(size=14),
+                             axis.text=element_text(size=12))
 
 
 # this call to animate will make an mp4

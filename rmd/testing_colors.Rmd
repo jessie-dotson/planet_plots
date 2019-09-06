@@ -1,0 +1,78 @@
+---
+title: "testing colors"
+author: "J. Dotson"
+date: "8/31/2019"
+output: html_document
+---
+
+trying my hand at creating some custom color palettes
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(ggplot2)
+
+
+myecho=FALSE
+knitr::opts_knit$set(root.dir = '../.')
+```
+
+For ease of reuse across different notebooks, all the color stuff is in a script...
+
+```{r }
+
+source("Rscripts/mycolors.R")
+
+
+```
+
+
+```{r }
+mydata <- iris
+```
+
+
+```{r}
+baseplot <- ggplot(mydata) + theme_bw()
+# Color by discrete variable using default palette
+p1 <- baseplot + geom_point(aes(Sepal.Width, Sepal.Length, color=Species), size=4) + scale_color_drsimonj()
+print(p1)
+
+# Color by numeric variable with cool palette
+p2 <- baseplot + geom_point(aes(Sepal.Width, Sepal.Length, color=Sepal.Length), size=4,alpha=0.6) + scale_color_drsimonj(discrete = FALSE, palette = "cool")
+print(p2)
+
+# Fill by discrete variable with different palette + remove legend (guide)
+p3 <- ggplot(mpg, aes(manufacturer, fill = manufacturer)) + theme_bw() +
+    geom_bar() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    scale_fill_drsimonj(palette = "mixed", guide = "none")
+print(p3)
+
+```
+
+Now trying out my palettes from the flat ui...
+
+```{r}
+baseplot <- ggplot(mydata) + theme_bw()
+# Color by discrete variable using default palette
+p1 <- baseplot + geom_point(aes(Sepal.Width, Sepal.Length, color=Species), size=4) + scale_color_geert()
+print(p1)
+
+p1 <- baseplot + geom_point(aes(Sepal.Width, Sepal.Length, color=Species), size=4) + scale_color_geert(palette="main_light")
+print(p1)
+
+# Color by numeric variable with cool palette
+p2 <- baseplot + geom_point(aes(Sepal.Width, Sepal.Length, color=Sepal.Length), size=4,alpha=0.6) + scale_color_geert(discrete = FALSE, palette = "cool")
+print(p2)
+
+# Fill by discrete variable with different palette + remove legend (guide)
+p3 <- ggplot(mpg, aes(manufacturer, fill = manufacturer)) + theme_bw() +
+    geom_bar() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    scale_fill_geert(palette = "mixed", guide = "none")
+print(p3)
+```
+
+
+
+

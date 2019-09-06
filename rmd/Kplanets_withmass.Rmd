@@ -20,7 +20,17 @@ require(ggthemes)
 require(gridExtra)
 myecho=FALSE
 knitr::opts_knit$set(root.dir = '../.')
+
+
 ```
+
+Pull in my color palettes
+
+```{r}
+source("Rscripts/mycolors.R")
+```
+
+
 
 From planethistory_base:
 
@@ -41,17 +51,22 @@ planets_m <- planets_m %>% filter(fpl_radreflink != "<a refstr=CALCULATED_VALUE 
 Ok, and let's set up a factor for kepler/k2 and other...
 
 ```{r}
-planets_m$source <- rep("All Others", nrow(planets_m))
+planets_m$source <- rep("All Other Discoveries", nrow(planets_m))
 jj <- which(planets_m$pl_instrument == "Kepler CCD Array")
 planets_m$source[jj] <-"Kepler/K2 Discoveries"
 
+
+planets_m$source <- factor(planets_m$source, levels=c("Kepler/K2 Discoveries","All Other Discoveries"))
+
 count(planets_m, source)
+
+
 ```
 
 ```{r}
 baseplot <- ggplot(planets_m) + theme_bw()
 
-p1 <- baseplot + geom_point(aes(x=fpl_bmasse, y=fpl_rade,col=source),alpha=0.5)
+p1 <- baseplot + geom_point(aes(x=fpl_bmasse, y=fpl_rade,col=source),alpha=0.5) + scale_color_geert()
 p1 <- p1 + scale_x_log10() + scale_y_log10()
 print(p1)
 
@@ -109,17 +124,34 @@ planets_m$size <- factor(planets_m$size, levels=c("Earth","SuperEarth","Neptune"
 ```{r}
 baseplot <- ggplot(planets_m ) + theme_bw()
 
-p2 <- baseplot + geom_bar(aes(x=size, fill=size))
+p2 <- baseplot + geom_bar(aes(x=size, fill=size)) + scale_fill_geert(palette="planets2")
 print(p2)
 
 p2 <- p2 + facet_wrap(~source)
-p2 <- p2 + theme(axis.text.x = element_text(angle = 90)) + theme(legend.position = "none")
-p2 <- p2 + ylab("Number with measured mass and radius")
+p2 <- p2 + theme(axis.text.x = element_text(angle = 90, size=12,vjust=0.5)) + theme(legend.position = "none")
+p2 <- p2 + theme(axis.text.y = element_text(size=12))
+p2 <- p2 + theme(strip.text = element_text(size=16)) + theme(axis.title = element_text(size=14))
+p2 <- p2 + ylab("Number")
+p2 <- p2 + labs(title = "Exoplanets with Measured Mass and Radius")
+p2 <- p2 + theme(plot.title = element_text(size=18, hjust=0.5))
 print(p2)
 
 ```
 
 
+How were the non Kepler ones discovered?
+
+```{r}
+
+notkep <- planets_m %>% filter(source == "All Other Discoveries")
+
+count(notkep, pl_discmethod)
+
+count(notkep, pl_facility)
+
+
+
+```
 
 
 

@@ -24,7 +24,8 @@ knitr::opts_knit$set(root.dir = '../.')
 
 
 ```{r}
-download <- TRUE
+download <- FALSE
+source("Rscripts/mycolors.R")
 ```
 
 
@@ -167,10 +168,10 @@ reverselog_trans <- function(base = exp(1)) {
 
 
 ```{r}
-plot3 <- baseplot + geom_point(aes(x=koi_insol,y=koi_steff,col=size),alpha = 0.5)
+plot3 <- baseplot + geom_point(aes(x=koi_insol,y=koi_steff,col=size),alpha = 0.5) + scale_color_geert(palette="planets")
 plot3 <- plot3 +  scale_y_log10() + scale_x_continuous(trans=reverselog_trans(10))
 plot3 <- plot3 + xlab("stellar flux (earth units)") + ylab("Stellar Effective Temperature (K)")
-plot3 <- plot3 + scale_color_hue(breaks=c("Earth","SuperEarth","Neptune","Jupiter","Huge"))
+#plot3 <- plot3 + scale_color_hue(breaks=c("Earth","SuperEarth","Neptune","Jupiter","Huge"))
 print(plot3)
 
 plot3 <- plot3 + facet_wrap(~size)
@@ -252,16 +253,19 @@ HZrange <- templot
 ```{r}
 
 
-templot <- ggplot(my_HZ_limits) + theme_bw()
+templot <- ggplot(my_HZ_limits) + theme_bw() + scale_color_geert(palette="planets2")
 templot <- templot + geom_ribbon(aes(x=T, ymin=recent_venus, ymax=early_mars),fill="lightgrey")
-templot <- templot + geom_point(data=candidates, aes(x=koi_steff, y=koi_insol, col=size), alpha=0.5)
+templot <- templot + geom_point(data=candidates, aes(x=koi_steff, y=koi_insol, col=size), alpha=0.8, size=0.7)
 print(templot)
 
 templot <- templot + coord_flip()
 print(templot)
 
-templot <- templot + scale_x_log10() + scale_y_continuous(trans=reverselog_trans(10))
+templot <- templot + scale_x_log10() + scale_y_continuous(trans=reverselog_trans(10)) 
+templot <- templot + theme(axis.title = element_text(size=14)) + theme(legend.title = element_text(size=14))
+templot <- templot + theme(axis.text = element_text(size=12)) + theme(legend.text = element_text(size=12))
 templot <- templot + xlab("Stellar Effective Temperature (K)") + ylab("Stellar Flux (earth units)")
+templot <- templot + guides(colour = guide_legend(override.aes = list(size=3)))
 print(templot)
 
 templot2 <- templot + facet_wrap(~size)

@@ -1,0 +1,79 @@
+---
+title: "kepler giants"
+author: "J. Dotson"
+date: "8/29/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(ggplot2)
+require(hexbin)
+require(scales)
+require(dplyr)
+require(tidyverse)
+require(readr)
+require(RColorBrewer)
+require(ggforce)
+require(ggthemes)
+require(gridExtra)
+myecho=FALSE
+knitr::opts_knit$set(root.dir = '../.')
+```
+
+From planethistory_base:
+
+```{r }
+planets_m <- readRDS("RDS/planets_moreinfo.rds")
+```
+
+
+```{r }
+
+kepler <- planets_m %>% filter(pl_instrument == "Kepler CCD Array")
+
+```
+
+```{r}
+count(kepler, pl_discmethod)
+
+phasers <- kepler %>% filter(pl_discmethod == "Orbital Brightness Modulation")
+```
+
+```{r}
+earth_max <- 1.25
+super_earth_max <- 2.0
+neptune_max <- 6.0
+jupiter_max <- 15.0
+
+kepler$size <- rep(NA, nrow(kepler))
+
+kepler <- mutate(kepler, size = ifelse(((fpl_rade > neptune_max) & (fpl_rade <= jupiter_max)), "Jupiter",
+                                             ifelse(((fpl_rade > super_earth_max) & (fpl_rade <= neptune_max)), "Neptune",
+                                                    ifelse(((fpl_rade > earth_max)& (fpl_rade <= super_earth_max)), "SuperEarth",
+                                                           ifelse(((fpl_rade > 0) & (fpl_rade <= earth_max)), "Earth", "Huge")))))
+
+count(kepler, size)
+
+kepler$size <- factor(kepler$size, levels=c("Earth","SuperEarth","Neptune","Jupiter","Huge"))
+```
+
+```{r}
+kepler_big <- kepler %>% filter(size %in% c("Neptune", "Jupiter", "Huge"))
+```
+
+```{r}
+baseplot <- ggplot(kepler_big) + theme_bw()
+p1 <- baseplot + geom_density(aes(fpl_rade))
+print(p1)
+
+p2 <- baseplot + geom_density(aes(pl_orbsmax))
+print(p2)
+
+```
+
+
+
+
+
+
