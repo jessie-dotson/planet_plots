@@ -1,0 +1,344 @@
+---
+title: "Plot planets on the sky"
+author: "J. Dotson"
+date: "9/24/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+require(ggplot2)
+require(dplyr)
+require(tidyverse)
+require(readr)
+require(RColorBrewer)
+require(ggforce)
+require(ggthemes)
+require(gridExtra)
+require(gganimate)
+require(tidyr)
+require(mapproj)
+require(ggforce)
+require(timelineS)
+require(lubridate)
+require(purrr)
+
+myecho=FALSE
+knitr::opts_knit$set(root.dir = '../.')
+
+```
+
+read in planets grommed in planethistory_base
+
+```{r}
+
+p_planets <- readRDS("RDS/planets_to_plot.rds")
+
+source("Rscripts/mycolors.R")
+
+```
+
+Let's add a categorical variable for size.
+
+```{r}
+
+earth_max <- 1.25
+super_earth_max <- 2.0
+neptune_max <- 6.0
+jupiter_max <- 15.0
+
+p_planets$size <- rep(NA, nrow(p_planets))
+
+p_planets <- mutate(p_planets, size = ifelse(((new_rade > neptune_max) & (new_rade <= jupiter_max)), "Jupiter",
+                                             ifelse(((new_rade > super_earth_max) & (new_rade <= neptune_max)), "Neptune",
+                                                    ifelse(((new_rade > earth_max)& (new_rade <= super_earth_max)), "SuperEarth",
+                                                           ifelse(((new_rade > 0) & (new_rade <= earth_max)), "Earth", "Huge")))))
+
+rad_planets <- p_planets %>% filter(!is.na(size))
+
+rad_planets$size <- factor(rad_planets$size, levels=c("Earth","SuperEarth","Neptune","Jupiter","Huge"))
+
+```
+
+
+
+
+
+First an all sky plot
+
+
+```{r }
+
+baseplot <- ggplot(rad_planets) + theme_bw()
+
+allsky <- baseplot + geom_point(aes(x=ra,y=dec),size=0.4, alpha=0.5) + coord_map(projection="mollweide")
+print(allsky)
+
+allsky2 <- baseplot + geom_point(aes(x=ra,y=dec,col=size),size=0.4, alpha=0.5) + coord_fixed()
+print(allsky2)
+
+```
+
+Just the Kepler field
+
+```{r}
+kep_planets <- rad_planets %>% filter(pl_kepflag == 1)
+
+kepbaseplot <- ggplot(kep_planets) + theme_bw()
+kepsky <- kepbaseplot + geom_point(aes(x=ra,y=dec),size=0.7, alpha=0.5) + coord_map(projection="mollweide")
+print(kepsky)
+
+
+kepsky <- kepbaseplot + geom_point(aes(x=ra,y=dec,col=size),size=1, alpha=1) + coord_map(projection="mollweide")
+kepsky <- kepsky + scale_color_geert(palette="planets2") + guides(colour = guide_legend(override.aes = list(size=3)))
+print(kepsky)
+
+
+```
+
+Missing a lot of semi-major axes.  So, let's just fill them in from period...
+
+```{r}
+p_planets$my_semimajor <- (p_planets$pl_orbper/365)^(2/3)
+```
+
+```{r}
+baseplot <- ggplot(p_planets) + theme_bw()
+
+p1 <- baseplot + geom_point(aes(x=pl_orbsmax,y=my_semimajor))
+print(p1)
+
+```
+
+
+
+```{r}
+baseplot <- ggplot(p_planets) + theme_bw()
+p1 <- baseplot + geom_histogram(aes(pl_orbsmax)) + xlim(c(0,25))
+print(p1)
+
+p1 <- baseplot + geom_density(aes(pl_orbsmax)) + scale_x_log10()
+print(p1)
+
+
+```
+
+
+
+
+```{r}
+
+close_planets <- p_planets %>% filter(pl_orbsmax < 30)
+
+baseplot <- ggplot(close_planets) + theme_bw()
+
+p1 <- baseplot + geom_circle(aes(x0=0,y0=0,r=pl_orbsmax),alpha=0.1) + coord_fixed()
+print(p1)
+
+
+```
+
+Let's go back to our solar system...
+
+```{r}
+solarsystem <- read_csv("inputs/solarsystem.csv",comment="#")
+
+solarsystem <- solarsystem %>% filter(planet != "Pluto")
+
+solarsystem$planet <- factor(solarsystem$planet, levels=c("Mercury","Venus","Earth","Mars","Jupiter","Saturn","Uranus","Neptune"))
+
+```
+
+```{r}
+ssbase <- ggplot(solarsystem) + theme_void()
+p1 <- ssbase + geom_circle(aes(x0=0,y0=0, r=semimajor)) + coord_fixed()
+print(p1)
+
+p2 <- p1 + geom_point(aes(y=0, x=semimajor,col=planet), size=3)
+p2 <- p2  + scale_color_geert(palette="solarsystem") + theme(legend.title = element_blank())
+print(p2)
+
+p2 <- p1 + geom_point(aes(y=0, x=semimajor,col=planet,size=Re))
+p2 <- p2  + scale_color_geert(palette="solarsystem") + theme(legend.title = element_blank())
+p2 <- p2 + guides(colour = guide_legend(override.aes = list(size=3)))
+p2 <- p2 + scale_size(guide = 'none')
+print(p2)
+```
+
+
+```{r}
+inner <- solarsystem %>% filter(semimajor < 5)
+
+ssbase <- ggplot(inner) + theme_void()
+p1 <- ssbase + geom_circle(aes(x0=0,y0=0, r=semimajor)) + coord_fixed()
+print(p1)
+
+p2 <- p1 + geom_point(aes(y=0, x=semimajor,col=planet), size=3)
+p2 <- p2  + scale_color_geert(palette="solarsystem") + theme(legend.title = element_blank())
+print(p2)
+
+p2 <- p1 + geom_point(aes(y=0, x=semimajor,col=planet,size=Re))
+p2 <- p2  + scale_color_geert(palette="innersolarsystem") + theme(legend.title = element_blank())
+p2 <- p2 + guides(colour = guide_legend(override.aes = list(size=3)))
+p2 <- p2 + scale_size(guide = 'none')
+p2 <- p2 + geom_point(aes(x=0,y=0),size=10,col="yellow")
+print(p2)
+
+
+```
+
+```{r}
+closeplanets <- p_planets %>% filter(my_semimajor < solarsystem$semimajor[1])
+
+print(paste("Number of planets closer than Mercury = ", nrow(closeplanets)))
+
+nextplanets <- p_planets %>% filter(my_semimajor >= solarsystem$semimajor[1])
+nextplanets <- nextplanets %>% filter(my_semimajor < solarsystem$semimajor[2])
+print(paste("Number of planets between Mercury and Venus = ", nrow(nextplanets)))
+
+
+nextplanets <- p_planets %>% filter(my_semimajor >= solarsystem$semimajor[2])
+nextplanets <- nextplanets %>% filter(my_semimajor < solarsystem$semimajor[3])
+print(paste("Number of planets between Venus and Earth = ", nrow(nextplanets)))
+
+nextplanets <- p_planets %>% filter(my_semimajor >= solarsystem$semimajor[3])
+nextplanets <- nextplanets %>% filter(my_semimajor < solarsystem$semimajor[4])
+print(paste("Number of planets between Earth and Mars = ", nrow(nextplanets)))
+
+farplanets <- p_planets %>% filter(my_semimajor >= solarsystem$semimajor[4])
+print(paste("Number of planets further away then Mars = ", nrow(farplanets)))
+
+jj <- p_planets %>% filter(my_semimajor < solarsystem$semimajor[4])
+
+
+```
+
+
+```{r}
+timelineS(mj_life, main = "Life of Michael Jackson")
+```
+The size history file is made in moving_planets_v2
+
+```{r}
+size_history2 <- read_csv("outputs/size_history.csv")
+```
+
+```{r}
+size_history2$totals <- size_history2$earth_cum + size_history2$sd_cum + 
+  size_history2$nep_cum + size_history2$jup_cum + size_history2$huge_cum
+```
+
+
+```{r}
+baseplot <- ggplot(size_history2) + theme_bw()
+p1 <- baseplot + geom_bar(aes(x=year,y=totals),stat="identity")
+print(p1)
+```
+
+```{r}
+baseplot <- ggplot(p_planets) + theme_bw()
+p1 <- baseplot + geom_bar(aes(x=pl_discmethod))
+print(p1)
+
+
+```
+
+```{r}
+count(p_planets, pl_discmethod)
+count(p_planets, pl_instrument)
+```
+
+
+
+```{r}
+temp <- p_planets %>% filter(pl_discmethod == "Transit")
+transit_history <- count(temp, pl_disc)
+colnames(transit_history) <- c("year", "Transit")
+
+temp <- p_planets %>% filter(pl_discmethod == "Radial Velocity")
+rv_history <- count(temp, pl_disc)
+colnames(rv_history) <- c("year", "RV")
+
+`%not_in%` <- purrr::negate(`%in%`)
+
+temp <- p_planets %>% filter(pl_discmethod %not_in% c("Transit","Radial Velocity"))
+other_history <- count(temp, pl_disc)
+colnames(other_history) <- c("year", "Other")
+
+disc_history <- count(p_planets, pl_disc)
+colnames(disc_history) <- c("year", "Planets")
+
+method_history <- merge(disc_history, transit_history, by.x="year", by.y="year", all.x=TRUE)
+method_history <- merge(method_history, rv_history, by.x="year",by.y="year",all.x=TRUE)
+method_history <- merge(method_history, other_history, by.x="year", by.y="year",all.x=TRUE)
+
+
+```
+
+```{r}
+cum_column <- function(myx, myy){
+  myresult <- tibble(x = myx, y=myy)
+  jj <- which(is.na(myresult$y))
+  myresult$y[jj] <- 0
+  myresult$cum <- rep(0,nrow(myresult))
+  myresult$cum[1] <- myresult$y[1]
+  for (i in 2:length(myx)){
+    myresult$cum[i] <- myresult$cum[i-1] + myresult$y[i]
+  }
+  return(myresult$cum)
+}
+```
+
+```{r}
+method_history$planets_cum <- cum_column(method_history$year, method_history$Planets)
+method_history$transit_cum <- cum_column(method_history$year, method_history$Transit)
+method_history$rv_cum <- cum_column(method_history$year, method_history$RV)
+method_history$other_cum <- cum_column(method_history$year, method_history$Other)
+```
+
+```{r}
+temp <- method_history %>% select(c("year", "transit_cum","rv_cum","other_cum"))
+colnames(temp) <- c("Year","Transit","Radial Velocity","Other")
+
+method_history_long <- gather(temp, method, count, Transit:Other)
+
+
+#method_history_long$method_f <- factor(method_history_long$method, levels=c("Transit","RV","Other"))
+```
+
+```{r}
+baseplot <- ggplot(method_history_long) + theme_bw()
+p1 <- baseplot + geom_bar(aes(x=Year,y=count,fill=method),col="white",stat="identity")
+p1 <- p1 + ylab("Number Known") + labs(fill = "How Discovered")
+p1 <- p1 + theme(axis.text=element_text(size=14))
+p1 <- p1 + theme(axis.title=element_text(size=16))
+p1 <- p1 + theme(legend.title=element_text(size=16))
+p1 <- p1 + theme(legend.text = element_text(size=14)) 
+
+print(p1)
+
+
+p1 <- p1 + guides(fill=FALSE)
+print(p1)
+
+```
+
+
+
+
+```{r}
+Events <- c("First Exoplanet", "Kepler Launched", "CoRoT Launched","TESS Launched")
+Event_date <- c("1989-01-01", "2009-03-09","2006-12-27","2018-04-18")
+
+planet_timeline <- tibble(Events=Events, Event_date=Event_date)
+```
+
+
+```{r}
+timelineS(planet_timeline)
+```
+
+
+
+

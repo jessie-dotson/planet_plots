@@ -64,7 +64,11 @@ geert_palettes <- list(
   
   `planets` = geert_cols("emerald","green_sea","peter_river","pomegranate","amethyst"),
   
-  `planets2` = geert_cols("emerald","sunflower","peter_river","pomegranate","amethyst")
+  `planets2` = geert_cols("emerald","sunflower","peter_river","pomegranate","amethyst"),
+  
+  `solarsystem` = geert_cols("asbestos","amethyst","emerald","carrot","pomegranate", "sunflower","turquoise","peter_river"),
+  
+  `innersolarsystem` = geert_cols("asbestos","amethyst","emerald","carrot")
 )
 
 #' Return function to interpolate a drsimonj color palette

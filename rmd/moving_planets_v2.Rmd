@@ -67,7 +67,7 @@ thisplot <- thisplot + theme(plot.title=element_text(size=16),
 #animate(thisplot, nframes = 300,renderer = av_renderer(),width=1200, height=800, res=144)
 
 # this call to animate will make a gif
-animate(thisplot, nframes=300, width=1200, height=800, res=144) 
+#animate(thisplot, nframes=300, width=1200, height=800, res=144) 
 
 
 
@@ -127,11 +127,12 @@ baseplot <- ggplot(rad_planets) + theme_bw()
 
 bar_p <- baseplot + geom_bar(aes(size,col=size, fill=size))
 
-bar_p<- bar_p + xlab("") + ylab("Number Known")
+bar_p<- bar_p + xlab("Size") + ylab("Number Known")
 bar_p <- bar_p + theme(legend.position = "none")
 bar_p <- bar_p + theme(axis.text=element_text(size=14))
 bar_p <- bar_p + theme(axis.title=element_text(size=16))
 bar_p <- bar_p + theme(plot.title=element_text(size=20, face="bold",hjust=0.5))
+bar_p <- bar_p + scale_color_geert(palette="planets2") + scale_fill_geert(palette="planets2")
 
 
 print(bar_p)
@@ -220,6 +221,15 @@ size_history_long$size_f <- factor(size_history_long$size, levels=c("earths","su
 
 ```
 
+Save the wide format for use elsewhere...
+
+```{r}
+write_csv(size_history, "outputs/size_history.csv")
+```
+
+
+
+
 
 Finally plot!
 ```{r}
@@ -228,12 +238,13 @@ temp <- size_history_long %>% filter(year == 2019)
 
 baseplot <- ggplot(temp) + theme_bw()
 
-p1 <- baseplot + geom_bar(aes(x=size_f, y=count, col=size,fill=size),stat="identity")
-p1<- p1 + xlab("") + ylab("Number Known")
+p1 <- baseplot + geom_bar(aes(x=size_f, y=count, col=size_f,fill=size_f),stat="identity")
+p1<- p1 + xlab("Size") + ylab("Number Known")
 p1 <- p1 + theme(legend.position = "none")
 p1 <- p1 + theme(axis.text=element_text(size=14))
 p1 <- p1 + theme(axis.title=element_text(size=16))
 p1 <- p1 + theme(plot.title=element_text(size=20, face="bold",hjust=0.5))
+p1 <- p1 + scale_color_geert(palette="planets2") + scale_fill_geert(palette="planets2")
 print(p1)
 ```
 
@@ -241,19 +252,24 @@ And animate...
 
 
 ```{r}
+#size_history_long$size <- factor(size_history_long$size, levels=c("Earth","SuperEarth","Neptune","Jupiter","Huge"))
+
+#size_history_long$size_f <- factor(size_history_long$size, levels=c("earth","superearth","neptune","jupiter","huge"))
+
 baseplot <- ggplot(size_history_long) + theme_bw()
 
-p1 <- baseplot + geom_bar(aes(x=size_f, y=count, col=size,fill=size),stat="identity")
-p1<- p1 + xlab("") + ylab("Number Known")
+p1 <- baseplot + geom_bar(aes(x=size_f, y=count, col=size_f,fill=size_f),stat="identity")
+p1<- p1 + xlab("Size") + ylab("Number Known")
 p1 <- p1 + theme(legend.position = "none")
 p1 <- p1 + theme(axis.text=element_text(size=14))
 p1 <- p1 + theme(axis.title=element_text(size=16))
 p1 <- p1 + theme(plot.title=element_text(size=20, face="bold",hjust=0.5))
-p1 <- p1 +  transition_time(year) + labs(title="Year: {floor(frame_time)}")
+p1 <- p1 +  transition_time(year) + labs(title="Confirmed Planets as of {floor(frame_time)}")
+p1 <- p1 + scale_color_geert(palette="planets2") + scale_fill_geert(palette="planets2")
 
 
-#animate(p1, nframes=300, width=1200, height=800, res=144, renderer=av_renderer())  #makes mp4         
-animate(p1, nframes=300, width=500, height=300, end_pause=30) #makes gif
+animate(p1, nframes=300, width=1200, height=800, res=144, renderer=av_renderer())  #makes mp4         
+#animate(p1, nframes=300, width=500, height=300, end_pause=30) #makes gif
 ```
 
 ```{r}
